@@ -17,6 +17,7 @@ these functions here in the .c file rather than the header.
 // 64kB stack
 #define THREAD_STACK_SIZE 1024*64
 
+
 /*
 max number of threads
 
@@ -34,9 +35,17 @@ annoying.  So please leave this value as it is and use MAX_THREADS
 
 // storage for your thread data
 ucontext_t threads[MAX_THREADS];
+bool bools[MAX_THREADS];
 
 
 // add additional constants and globals here as you need
+
+ucontext_t child, parent;
+bool child_done;
+int currentThread;
+int timesCalled;
+bool canWrite[MAX_THREADS];
+bool freedom[MAX_THREADS];
 
 
 /*
@@ -59,7 +68,14 @@ blank.
 
  */
 void initialize_basic_threads() {
-
+    child_done = false;
+    for (int i = 0; i < MAX_THREADS; i++){
+        bools[i] = false;
+        canWrite[i] = true;
+        freedom[i] = false;
+    }
+    currentThread = 0;
+    timesCalled = 0;
 }
 
 /*
@@ -94,8 +110,9 @@ create_new_thread(thread_function());
 
  */
 void create_new_thread(void (*fun_ptr)()) {
-
+    create_new_parameterized_thread(fun_ptr,NULL);
 }
+    
 
 
 /*
@@ -123,10 +140,60 @@ schedule_threads();
 
 
  */
+void noFinishHelper (void (*funptr)(),void* parameter){
+    funptr(parameter);
+    finish_thread();
+}
 
 void create_new_parameterized_thread(void (*fun_ptr)(void*), void* parameter) {
+    //printf("Calling create new thread on method %d\n",timesCalled);
+    timesCalled++;
+    // for (int j = 0; j < MAX_THREADS; j++){
+    //         //printf("bools[%d] rn %d\n",j,bools[j]);
+    //     }
+    for (int i = 0; i < MAX_THREADS; i++){
 
-}
+        if (!bools[i]){
+            //printf("canWrite[%d] rn %d\n",i,canWrite[i]);
+            if(canWrite[i]){
+                getcontext(&threads[i]);
+                threads[i].uc_link = 0;
+                threads[i].uc_stack.ss_sp = malloc( THREAD_STACK_SIZE );
+                threads[i].uc_stack.ss_size = THREAD_STACK_SIZE;
+                threads[i].uc_stack.ss_flags = 0;
+                if ( threads[i].uc_stack.ss_sp == 0) {
+                    //add condition for exceeding max threads
+                    perror( "malloc: Could not allocate stack" );
+                    exit( 1 );
+                }
+                //assign ptr to function to child thread
+                void(*cast_ptr)() = (void(*)()) fun_ptr;
+                makecontext(&threads[i], (void*) (noFinishHelper),2,fun_ptr,parameter);
+                bools[i] = true;
+                canWrite[i] = false;
+                freedom[i] = true;
+                // printf("set bools[%d] = %d\n",i,bools[i]);
+                // printf("set canWrite[%d] = %d\n",i,canWrite[i]);
+                break;
+            }
+        }
+    }
+    ///swapcontext(&threads[currentThread], &parent);
+    // getcontext(&threads[currentThread]);
+    // threads[currentThread].uc_link = 0;
+    // threads[currentThread].uc_stack.ss_sp = malloc( THREAD_STACK_SIZE );
+    // threads[currentThread].uc_stack.ss_size = THREAD_STACK_SIZE;
+    // threads[currentThread].uc_stack.ss_flags = 0;
+    // if ( threads[currentThread].uc_stack.ss_sp == 0) {
+    //     //add condition for exceeding max threads
+    //     perror( "malloc: Could not allocate stack" );
+    //     exit( 1 );
+    // }
+    // //assign ptr to function to child thread
+    // makecontext(&threads[currentThread], fun_ptr,0);
+    // bools[currentThread] = true;
+    // printf("set bools[%d] = %d\n",currentThread,bools[currentThread]);
+    }
 
 
 /*
@@ -160,9 +227,49 @@ printf("Starting threads...");
 schedule_threads()
 printf("All threads finished");
 */
+    //printf("scheduling!\n");
 void schedule_threads() {
+    int buffaloCount = 0;
+    for (; currentThread < MAX_THREADS; currentThread++){
+        // printf("Current thread: %d\n",currentThread);
+        // printf("bools @ Current thread: %d\n",bools[currentThread]);
+        if (bools[currentThread]){
+            // buffaloCount++;
+            // printf("reached currrentThread = %d\n",currentThread);
+            //child = threads[currentThread];
+            // printf("I am storing context into parent at address %p I am swapping to context from child at address %p\n",&parent, &child);
+            // swapcontext (&parent, &threads[currentThread]);
+            swapcontext (&parent, &threads[currentThread]);
+            //if(buffaloCount > 3) exit(0);
+        }
+        if (currentThread == MAX_THREADS-1){
+            currentThread = -1;
+        }
+        if (freedom[currentThread] && !bools[currentThread]){
+            free(threads[currentThread].uc_stack.ss_sp);
+            freedom[currentThread] = false;
+        }
+        if (((bools[0]||bools[1]||bools[2]||bools[3]||bools[4]) == 0)){
+            // printf("all bools false, done!\n");
+            return;
+        }
 
+    }
+    return;
 }
+/*
+void schedule_threads() {
+    // printf("scheduling!\n");
+    while(!child_done){
+        swapcontext(&parent, &child);
+    }
+    //swapcontext(&child,&parent);
+    //finish_thread();
+    //for loop going through all threads
+    printf("all done!\n");
+    return;
+}
+*/
 
 /*
 yield
@@ -204,7 +311,10 @@ void thread_function()
 
 */
 void yield() {
-
+    //printf("yielding!\n");
+    // swapcontext(&threads[currentThread], &parent);
+    //printf("Now yielding: I am storing context into child at address %p I am swapping to context from parent at address %p\n",&child, &parent);
+    swapcontext(&threads[currentThread], &parent);
 }
 
 /*
@@ -232,5 +342,11 @@ void thread_function()
 
 */
 void finish_thread() {
-
+    //printf("finishing! %d \n",currentThread);
+    bools[currentThread] = false;
+    canWrite[currentThread] = true;
+    //child_done = true;
+    //free(child.uc_stack.ss_sp);
+    swapcontext(&threads[currentThread], &parent);
+    return;
 }
