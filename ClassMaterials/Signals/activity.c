@@ -58,9 +58,27 @@ void cleanup() {
     exit(0);
 }
 
+void handleAlarm(int alarm){
+    cleanup();
+}
+
+void maskOrUnmask(int enableDisable){
+    sigset_t mask;
+    sigemptyset (&mask);
+    sigaddset (&mask, SIGINT);
+    if(sigprocmask(enableDisable, &mask, NULL) < 0){
+        perror("sigprocmask");
+    }
+}
+
 int main() 
 {
+    signal(SIGINT, handleAlarm);
+    signal(SIGALRM, handleAlarm);
     part1();
+    maskOrUnmask(SIG_BLOCK);
     part2();
+    maskOrUnmask(SIG_UNBLOCK);
+    alarm(4);
     part3();
 }
