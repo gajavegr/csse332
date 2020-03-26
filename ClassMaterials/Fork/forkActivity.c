@@ -134,26 +134,46 @@ exiting
 
 int main() {
   // look at forkExample for help!
-  for(int i = 0;i < 10; i++){
-    int fresult = fork();
-    if(fresult == 0){
 
-        printf("I'm child %d\n", i);
-        sleep(2);
-        exit(i);
-        
-        char output[50];
-        snprintf(output, 50, "I'm child %d",i);
-        execlp("./buffalosay.bin", "./buffalosay.bin", output, NULL);
-        perror("error execing!");
-        exit(99);                      
+  /*
+  Write a process that forks 10 child processes, then waits for them all
+  to complete, prints a message with their exit code, then exits.
+
+  The child processes should print a message with an ID, sleep for 1 second, then exit with that ID code.
+
+  How to do this?  Make a simple for loop that counts from 0 to 9.
+
+  Within the for loop, do a fork.  Child forks should print and exit.
+  The part fork should continue looping.
+
+  If you do it correctly the output should look like this:
+  */
+
+  int childnum = 0;
+
+  for (int i = 0; i < 10; i++){
+    childnum = fork();
+    if (childnum == 0){
+      char output[50];
+      snprintf(output, 50, "I'm child %d",i);
+      char *const command2[] = {"./buffalosay.bin",output, NULL};
+      execvp("./buffalosay.bin",command2);
+      
+      sleep(1);  // wait 1 second
+      exit(i); // THIS EXIT IS IMPORTANT
     }
+
+
   }
+  
+  printf("I am the parent process\n");
   int status;
-  for(int i = 0;i < 10; i++){
+  for (int i = 0; i < 10; i++){
     wait(&status);
-    printf("One child returns with exit code %d\n",WEXITSTATUS(status));
+    printf("Child complete with status %d\n",WEXITSTATUS(status));
   }
+  
+
   printf("exiting\n");
 
   return 0;
