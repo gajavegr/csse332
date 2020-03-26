@@ -36,8 +36,8 @@ int main(void) {
        (i.e. you don't know how many args there will be when you write
        the exec command). */
     
-    char *const command[] = {"/bin/ls","-l","-h", NULL};
-    //execv("/bin/ls", command);
+   //  char *const command[] = {"/bin/ls","-l","-h", NULL};
+   //  execv("/bin/ls", command);
 
     // for reasons of laziness I'll usually write that as
     // execv(command[0], command) but the above is more explicit
