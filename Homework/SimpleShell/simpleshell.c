@@ -7,7 +7,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <stdbool.h>
+#include <string.h>
 
+void handler(){
+    wait(NULL);
+}
 
 int main() {
     char command[82];
@@ -23,15 +28,49 @@ int main() {
             if(command[len_1] == ' ')
                 break;
         }
+        command[len_1] = '\0';
         parsed_command[0] = command;
         if(len_1 == strlen(command)){
             printf("Command is '%s' with no arguments\n", parsed_command[0]); 
             parsed_command[1] = NULL;
-        }else{
-            command[len_1] = '\0';
+        }
+        else{
             parsed_command[1] = command + len_1 + 1;
             printf("Command is '%s' with argument '%s'\n", parsed_command[0], parsed_command[1]); 
         }
-
+        char *const command2[] = {parsed_command[0],parsed_command[1], NULL};
+        char b = parsed_command[0][0];
+        char g = parsed_command[0][1];
+        bool background = (b=='B')&&(g == 'G');
+        // printf("background: %d",background);
+        int childnum = fork();
+        // printf("%d\n",childnum);
+        int childnum2;
+        // int grandchild;
+        // int child;
+        if (childnum == 0 && background){
+            childnum2 = fork();
+                if (childnum2 == 0){
+                    char* stringWithoutPrefix = &parsed_command[0][2];
+                    execvp(stringWithoutPrefix,command2);
+                    exit(0);
+                }
+                else{
+                    wait(&childnum);
+                    printf("Background command finished\n");
+                    exit(0);
+                }
+            
+        }
+        else if (childnum == 0 && !background){
+            execvp(parsed_command[0],command2);
+            signal(SIGCHLD, handler);
+            exit(0);
+        }
+        else if (childnum !=0 && !background){
+            signal(SIGCHLD, handler);
+            wait(NULL);
+        }
     }
+    // wait(NULL);
 }
