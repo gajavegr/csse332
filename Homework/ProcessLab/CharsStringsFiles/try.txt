@@ -1,0 +1,19 @@
+FILE *fp = fopen("lorem.txt", "r");
+if(fp == NULL) {
+perror("Unable to open file!");
+ 9         exit(1);
+10     }
+11 
+12     // Read lines using POSIX function getline
+13     // This code won't work on Windows
+14     char *line = NULL;
+15     size_t len = 0;
+16 
+17     while(getline(&line, &len, fp) != -1) {
+18         printf("line length: %zd\n", strlen(line));
+19     }
+20 
+21     printf("\n\nMax line size: %zd\n", len);
+22 
+23     fclose(fp);
+24     free(line);

@@ -291,6 +291,7 @@ int main(int argc, char *argv[]) {
   int fileNum = 0;
   char *fileNames[] = {
     "Data/Bright.txt",
+    // "Bright.txt",
     "Data/Finney.txt",
     "Data/IBMvsSUN.txt",
     "Data/McGarr.txt",
